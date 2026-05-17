@@ -296,8 +296,3 @@ Edit `backend/dataset_schema.json` to add new dataset formats:
 ---
 
 *Powered by NVIDIA AI • Built with FastAPI & React*
-
-
-
-
-
