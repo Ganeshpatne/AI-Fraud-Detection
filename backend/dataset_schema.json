@@ -1,0 +1,52 @@
+{
+  "description": "Dataset schema mapping configuration for multi-domain fraud detection",
+  "supported_domains": ["banking", "insurance", "ecommerce", "document_fraud"],
+  "schema_mappings": {
+    "banking": {
+      "label_column": "Class",
+      "amount_column": "Amount",
+      "timestamp_column": "Time",
+      "location_column": null,
+      "feature_columns_pattern": "V*",
+      "description": "Standard credit card fraud dataset (Kaggle format)"
+    },
+    "insurance": {
+      "label_column": "fraud_reported",
+      "amount_column": "total_claim_amount",
+      "timestamp_column": "incident_date",
+      "location_column": "incident_city",
+      "feature_columns_pattern": null,
+      "description": "Insurance claim fraud dataset"
+    },
+    "ecommerce": {
+      "label_column": "is_fraud",
+      "amount_column": "purchase_value",
+      "timestamp_column": "purchase_time",
+      "location_column": "ip_address",
+      "feature_columns_pattern": null,
+      "description": "E-commerce transaction fraud dataset"
+    },
+    "document_fraud": {
+      "label_column": "is_forged",
+      "amount_column": "document_value",
+      "timestamp_column": "submission_date",
+      "location_column": "submission_location",
+      "feature_columns_pattern": null,
+      "description": "Document forgery detection dataset"
+    },
+    "custom": {
+      "label_column": "label",
+      "amount_column": "amount",
+      "timestamp_column": "timestamp",
+      "location_column": "location",
+      "feature_columns_pattern": null,
+      "description": "Custom dataset — user specifies column names"
+    }
+  },
+  "validation_rules": {
+    "min_rows": 100,
+    "max_file_size_mb": 500,
+    "required_label_values": [0, 1],
+    "allowed_extensions": [".csv"]
+  }
+}
