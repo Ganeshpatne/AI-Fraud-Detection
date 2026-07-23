@@ -1,97 +1,64 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchTransactions } from '../api.js';
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Transactions() {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('all');
+  const [txns, setTxns] = useState([]);
+  const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(0);
   const limit = 20;
 
-  useEffect(() => { 
-    loadTransactions(); 
-    const interval = setInterval(async () => {
-      try {
-        const data = await fetchTransactions(page * limit, limit, filterType);
-        setTransactions(data);
-      } catch (e) {}
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [page, filterType]);
-
-  async function loadTransactions() {
-    setLoading(true);
+  const loadData = async () => {
     try {
-      const data = await fetchTransactions(page * limit, limit, filterType);
-      setTransactions(data);
-    } catch (e) {
-      console.error('Failed to load transactions:', e);
-      // Demo data
-      setTransactions(Array.from({ length: 15 }, (_, i) => ({
-        id: `txn-${String(i + 1).padStart(4, '0')}`,
-        user_id: `user-${(i % 5) + 1}`,
-        amount: Math.random() * 15000,
-        location: ['Mumbai, IN', 'New York, US', 'Lagos, NG', 'London, UK', 'Tokyo, JP'][i % 5],
-        is_fraud: Math.random() > 0.7,
-        risk_score: Math.random() * 100,
-        confidence: Math.random(),
-        timestamp: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
-        merchant: ['Amazon', 'Netflix', 'Uber', 'Flipkart', 'Crypto Exchange'][i % 5],
-      })));
-    } finally {
-      setLoading(false);
-    }
-  }
+      const data = await fetchTransactions(page * limit, limit, filter);
+      setTxns(Array.isArray(data) ? data : data.transactions || []);
+    } catch (e) { console.error(e); }
+  };
 
-  function formatDate(iso) {
-    return new Date(iso).toLocaleString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
-  }
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 2000);
+    return () => clearInterval(interval);
+  }, [page, filter]);
+
+  const riskColor = (score) => {
+    if (score >= 80) return '#ef4444';
+    if (score >= 50) return '#f59e0b';
+    return '#10b981';
+  };
 
   return (
-    <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      <div className="page-header">
-        <h1>Transaction Monitor</h1>
-        <p>Browse and analyze all processed transactions</p>
-      </div>
-
-      {/* Controls */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Filter size={16} color="var(--text-muted)" />
-          <select 
-            className="form-select" 
-            style={{ 
-              width: '220px', 
-              fontWeight: 600, 
-              color: filterType === 'fraud' ? 'var(--danger)' : filterType === 'legit' ? 'var(--success)' : 'var(--text-primary)',
-              borderColor: filterType === 'fraud' ? 'var(--danger)' : filterType === 'legit' ? 'var(--success)' : undefined
-            }}
-            value={filterType} 
-            onChange={(e) => { setFilterType(e.target.value); setPage(0); }}
-          >
-            <option value="all">🚦 All Transactions</option>
-            <option value="fraud">🔴 Showing Fraud Only</option>
-            <option value="legit">🟢 Showing Legit Only</option>
-          </select>
+    <div>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.5 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <h1 className="font-heading" style={{ fontSize: 'clamp(1.4rem,3vw,1.85rem)', color: 'var(--color-text)' }}>
+            Transaction Monitor
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={16} color="#64748b" />
+            <select value={filter} onChange={e => { setFilter(e.target.value); setPage(0); }}
+              style={{
+                background: 'var(--color-bg-raised)', border: '1px solid var(--color-border)', color: 'var(--color-text)',
+                borderRadius: 8, padding: '8px 12px', fontSize: '0.82rem', cursor: 'pointer'
+              }}>
+              <option value="all">All Transactions</option>
+              <option value="fraud">Fraud Only</option>
+              <option value="legit">Legit Only</option>
+            </select>
+          </div>
         </div>
-        <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-          Page {page + 1} • {transactions.length} records
-        </div>
-      </div>
+      </motion.div>
 
-      {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {loading ? (
-          <div className="loading-spinner"><div className="spinner" /></div>
-        ) : (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, ease: [0.22, 1, 0.36, 1], duration: 0.5 }}
+        style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+        <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr>
-                <th>Transaction ID</th>
+                <th>ID</th>
                 <th>Amount</th>
                 <th>Location</th>
                 <th>Merchant</th>
@@ -102,61 +69,72 @@ export default function Transactions() {
               </tr>
             </thead>
             <tbody>
-              {transactions.map((txn) => (
-                <tr key={txn.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: 'var(--accent-primary)', userSelect: 'all' }}>
-                    {txn.id}
+              {txns.map(tx => (
+                <tr key={tx.id}>
+                  <td style={{ fontFamily: 'monospace', color: '#00b4d8', fontSize: '0.8rem' }}>
+                    #{tx.id}
                   </td>
-                  <td style={{ fontWeight: 600, color: txn.amount > 5000 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                    ${txn.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <td style={{ color: (tx.amount || 0) > 5000 ? '#ef4444' : 'var(--color-text)', fontWeight: 600 }}>
+                    ${(tx.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
-                  <td>{txn.location || '—'}</td>
-                  <td>{txn.merchant || '—'}</td>
+                  <td style={{ color: 'var(--color-muted)' }}>{tx.location || '—'}</td>
+                  <td style={{ color: 'var(--color-muted)' }}>{tx.merchant || '—'}</td>
                   <td>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: '8px'
-                    }}>
-                      <div style={{
-                        width: '50px', height: '5px', borderRadius: '3px',
-                        background: 'var(--border-color)', overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          height: '100%', borderRadius: '3px',
-                          width: `${Math.min(txn.risk_score, 100)}%`,
-                          background: txn.risk_score >= 70 ? 'var(--danger)' :
-                            txn.risk_score >= 40 ? 'var(--warning)' : 'var(--success)',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="risk-bar-bg">
+                        <div className="risk-bar-fill" style={{
+                          width: `${tx.risk_score || 0}%`,
+                          background: riskColor(tx.risk_score || 0)
                         }} />
                       </div>
-                      <span style={{ fontSize: '0.78rem' }}>{txn.risk_score.toFixed(1)}</span>
+                      <span style={{ fontSize: '0.8rem', color: riskColor(tx.risk_score || 0), fontWeight: 600 }}>
+                        {(tx.risk_score || 0).toFixed(0)}
+                      </span>
                     </div>
                   </td>
-                  <td style={{ fontSize: '0.82rem' }}>{(txn.confidence * 100).toFixed(1)}%</td>
+                  <td style={{ color: 'var(--color-muted)', fontSize: '0.82rem' }}>
+                    {((tx.confidence || 0) * 100).toFixed(1)}%
+                  </td>
                   <td>
-                    <span className={`badge ${txn.is_fraud ? 'badge-fraud' : 'badge-legitimate'}`}>
-                      {txn.is_fraud ? 'Fraud' : 'Legit'}
+                    <span className={`badge ${tx.is_fraud ? 'badge-fraud' : 'badge-legit'}`}>
+                      {tx.is_fraud ? 'FRAUD' : 'LEGIT'}
                     </span>
                   </td>
-                  <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {formatDate(txn.timestamp)}
+                  <td style={{ color: '#64748b', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                    {tx.timestamp ? new Date(tx.timestamp).toLocaleString() : '—'}
                   </td>
                 </tr>
               ))}
+              {txns.length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', color: '#64748b', padding: 40 }}>
+                    No transactions found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      </motion.div>
 
-      {/* Pagination */}
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: '0.75rem',
-        marginTop: '1.5rem', alignItems: 'center'
-      }}>
-        <button className="btn btn-secondary btn-sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>
-          <ChevronLeft size={14} /> Previous
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 20 }}>
+        <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
+          style={{
+            background: 'var(--color-bg-card)', border: '1px solid var(--color-border)',
+            borderRadius: 8, padding: '8px 12px', color: 'var(--color-text)',
+            cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1
+          }}>
+          <ChevronLeft size={16} />
         </button>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Page {page + 1}</span>
-        <button className="btn btn-secondary btn-sm" onClick={() => setPage(page + 1)} disabled={transactions.length < limit}>
-          Next <ChevronRight size={14} />
+        <span style={{ fontSize: '0.82rem', color: 'var(--color-muted)' }}>Page {page + 1}</span>
+        <button onClick={() => setPage(page + 1)} disabled={txns.length < limit}
+          style={{
+            background: 'var(--color-bg-card)', border: '1px solid var(--color-border)',
+            borderRadius: 8, padding: '8px 12px', color: 'var(--color-text)',
+            cursor: txns.length < limit ? 'not-allowed' : 'pointer',
+            opacity: txns.length < limit ? 0.4 : 1
+          }}>
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>

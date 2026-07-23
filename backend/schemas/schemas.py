@@ -21,6 +21,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str  # Google ID token or Access Token
+
+
+class GithubAuthRequest(BaseModel):
+    code: str  # GitHub OAuth authorization code
+
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

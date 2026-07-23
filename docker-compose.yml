@@ -1,0 +1,22 @@
+services:
+  docklog:
+    image: aimldev/docklog:latest
+    container_name: docklog
+    restart: unless-stopped
+    ports:
+      - "8888:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data
+    environment:
+      ENV: production
+      CLIENT_ACCESS: strict
+      TRUST_PROXY: "true"
+      DB_PATH: /app/data/docklog.db
+      # SECRET_KEY - A secure random 32-byte hex key generated for this deployment
+      SECRET_KEY: "fb76591dc7c50a1841ee7383679803b0c265b79e8a08d234a9e248bbf3782cd0"
+      ALLOW_START: "true"
+      ALLOW_STOP: "true"
+      ALLOW_RESTART: "true"
+      ALLOW_DELETE: "true"
+      ALLOW_SHELL: "true"

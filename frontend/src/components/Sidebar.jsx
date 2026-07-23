@@ -1,87 +1,125 @@
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, ArrowLeftRight, Bell, FlaskConical,
-  FileText, Shield, Database, LogOut, User, Moon, Sun
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Database, LayoutDashboard, ArrowLeftRight, Bell, FlaskConical, FileText, LogOut, Moon, Sun, Menu, X } from 'lucide-react';
+import Logo from './Logo.jsx';
 
 const navItems = [
-  { path: '/', label: 'Datasets', icon: Database, roles: ['admin'] },
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'analyst', 'user'] },
-  { path: '/transactions', label: 'Transactions', icon: ArrowLeftRight, roles: ['admin', 'analyst', 'user'] },
-  { path: '/alerts', label: 'Live Alerts', icon: Bell, roles: ['admin', 'analyst'] },
-  { path: '/simulation', label: 'Fraud Simulation', icon: FlaskConical, roles: ['admin', 'analyst'] },
-  { path: '/reports', label: 'Reports', icon: FileText, roles: ['admin', 'analyst'] },
+  { to: '/app/upload', icon: Database, label: 'Datasets' },
+  { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/app/transactions', icon: ArrowLeftRight, label: 'Transactions' },
+  { to: '/app/alerts', icon: Bell, label: 'Live Alerts' },
+  { to: '/app/simulation', icon: FlaskConical, label: 'Fraud Simulation' },
+  { to: '/app/reports', icon: FileText, label: 'Reports' },
 ];
 
 export default function Sidebar({ user, onLogout, isDark, onToggleTheme }) {
-  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const visibleItems = navItems.filter(item =>
-    !user?.role || item.roles.includes(user.role)
-  );
+  const handleLogout = () => {
+    onLogout();
+    navigate('/login');
+  };
 
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <Shield size={22} color="#00b4d8" />
-          <h1>FraudShield AI</h1>
+  const sidebarContent = (
+    <>
+      {/* Header */}
+      <div style={{ padding: '20px 20px 8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Logo />
+          <span className="font-heading" style={{ fontSize: 17, color: 'var(--color-text)' }}>FraudShield AI</span>
         </div>
-        <span>Fraud Detection Platform</span>
+        <p style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginTop: 4, paddingLeft: 40 }}>Fraud Detection Platform</p>
       </div>
 
-      <nav className="sidebar-nav">
-        {visibleItems.map(({ path, label, icon: Icon }) => (
-          <NavLink
-            key={path}
-            to={path}
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-            end={path === '/'}
-          >
-            <Icon size={18} />
-            {label}
+      {/* Navigation */}
+      <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {navItems.map(item => (
+          <NavLink key={item.to} to={item.to}
+            onClick={() => setMobileOpen(false)}
+            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}>
+            <item.icon size={18} />
+            {item.label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="sidebar-footer">
+      {/* Bottom */}
+      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border)' }}>
         {user && (
-          <div className="user-info">
-            <div className="user-avatar">
-              <User size={14} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #0077b6, #00b4d8)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-bg)'
+            }}>
+              {(user.username || 'U')[0].toUpperCase()}
             </div>
-            <div className="user-details">
-              <span className="user-name">{user.username}</span>
-              <span className="user-role">{user.role}</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '0.82rem', color: 'var(--color-text)', fontWeight: 500 }}>{user.username}</p>
+              <p style={{ fontSize: '0.7rem', color: 'var(--color-muted)', textTransform: 'capitalize' }}>{user.role}</p>
             </div>
-            <button
-              className="logout-btn"
-              onClick={onToggleTheme}
-              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              style={{ marginRight: '2px' }}
-            >
-              {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
-            <button className="logout-btn" onClick={onLogout} title="Sign out" id="logout-btn">
-              <LogOut size={16} />
-            </button>
           </div>
         )}
-
-        <div style={{
-          fontSize: '0.72rem',
-          color: 'var(--text-muted)',
-          lineHeight: 1.6,
-          marginTop: '12px',
-        }}>
-          <div style={{ color: 'var(--accent-primary)', fontWeight: 600, marginBottom: '4px' }}>
-            Powered by NVIDIA AI
-          </div>
-          Developed by Ganesh Patne,
-          Sujal Surve &amp; Aditya Tambadkar
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onToggleTheme} style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'var(--color-bg-raised)', border: 'none',
+            color: 'var(--color-muted)', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center'
+          }}>
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button onClick={handleLogout} style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'var(--color-bg-raised)', border: 'none',
+            color: 'var(--color-muted)', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center'
+          }}>
+            <LogOut size={16} />
+          </button>
         </div>
+        <p style={{
+          fontSize: '0.7rem', color: 'var(--color-accent)', fontWeight: 600,
+          marginTop: 12
+        }}>Developed by Ganesh Patne</p>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile toggle */}
+      <button className="sidebar-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)}
+        style={{
+          position: 'fixed', top: 12, left: 12, zIndex: 50,
+          background: 'var(--color-sidebar-bg)', border: '1px solid var(--color-border)',
+          borderRadius: 8, padding: 8, color: 'var(--color-text)', cursor: 'pointer'
+        }}>
+        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      {/* Backdrop (mobile) */}
+      {mobileOpen && (
+        <div onClick={() => setMobileOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(8,14,26,0.6)',
+            zIndex: 39
+          }} className="sidebar-mobile-toggle" />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
+        {sidebarContent}
+      </aside>
+
+      <style>{`
+        .sidebar-mobile-toggle { display: none; }
+        @media (max-width: 1023px) {
+          .sidebar-mobile-toggle { display: block; }
+        }
+      `}</style>
+    </>
   );
 }

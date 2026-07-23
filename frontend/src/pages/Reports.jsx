@@ -1,193 +1,171 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { FileText, Search, CheckCircle, Download, Loader2 } from 'lucide-react';
 import { generateReport, downloadReport, fetchTransactions } from '../api.js';
-import { FileText, Download, Loader2, CheckCircle, Search, AlertTriangle } from 'lucide-react';
 
 export default function Reports() {
-  const [transactionId, setTransactionId] = useState('');
-  const [reportResult, setReportResult] = useState(null);
+  const [txnId, setTxnId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(null);
   const [error, setError] = useState('');
-  const [generatedReports, setGeneratedReports] = useState([]);
-  const [recentFrauds, setRecentFrauds] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [fraudTxns, setFraudTxns] = useState([]);
 
   useEffect(() => {
-    // Fetch recent fraudulent transactions for quick filtering/selection
-    fetchTransactions(0, 10, true)
-      .then(data => setRecentFrauds(data))
-      .catch(console.error);
+    fetchTransactions(0, 20, 'fraud').then(data => {
+      setFraudTxns(Array.isArray(data) ? data : data.transactions || []);
+    }).catch(console.error);
   }, []);
 
-  async function handleGenerate(e) {
+  const handleGenerate = async (e) => {
     e.preventDefault();
-    if (!transactionId.trim()) return;
+    if (!txnId) return;
     setLoading(true);
     setError('');
+    setSuccess(null);
     try {
-      const res = await generateReport(transactionId);
-      setReportResult(res);
-      setGeneratedReports(prev => [res, ...prev]);
+      const res = await generateReport(txnId);
+      setSuccess(res);
+      setReports(prev => [{
+        id: `RPT-${Date.now()}`, transaction_id: txnId,
+        generated_at: new Date().toISOString()
+      }, ...prev]);
     } catch (err) {
-      setError(err.message || 'Failed to generate report');
-      // Demo
-      const demoReport = {
-        id: `rpt-${Date.now()}`,
-        transaction_id: transactionId,
-        file_path: 'reports/demo_report.pdf',
-        generated_at: new Date().toISOString(),
-      };
-      setReportResult(demoReport);
-      setGeneratedReports(prev => [demoReport, ...prev]);
-    } finally {
-      setLoading(false);
+      setError(err.message);
     }
-  }
+    setLoading(false);
+  };
 
   return (
-    <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-      <div className="page-header">
-        <h1>Investigation Reports</h1>
-        <p>Generate and download PDF fraud investigation reports</p>
-      </div>
+    <div>
+      <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="font-heading" style={{
+          fontSize: 'clamp(1.4rem,3vw,1.85rem)', color: 'var(--color-text)', marginBottom: 24
+        }}>Investigation Reports</motion.h1>
 
       {/* Generator */}
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <h3 style={{
-          color: 'var(--accent-primary)', fontSize: '1rem', fontWeight: 600,
-          marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px'
-        }}>
-          <FileText size={18} /> Generate Report
-        </h3>
-
-        <form onSubmit={handleGenerate} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ flex: 1, minWidth: '250px', marginBottom: 0 }}>
-            <label className="form-label">Transaction ID</label>
-            <input
-              type="text"
-              className="form-input"
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value)}
-              placeholder="Enter the transaction ID to generate report for…"
-              required
-            />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }} className="card" style={{ borderRadius: 14, marginBottom: 24 }}>
+        <form onSubmit={handleGenerate} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 6 }}>Transaction ID</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={16} color="#64748b" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+              <input value={txnId} onChange={e => setTxnId(e.target.value)}
+                placeholder="Enter transaction ID"
+                style={{
+                  width: '100%', padding: '10px 14px 10px 38px', borderRadius: 10,
+                  border: '1px solid var(--color-border)', background: 'var(--color-bg-raised)',
+                  color: 'var(--color-text)', fontSize: '0.88rem'
+                }} />
+            </div>
           </div>
-          <div className="form-group" style={{ flex: 1, minWidth: '250px', marginBottom: 0 }}>
-            <label className="form-label" style={{ color: 'var(--danger)' }}>
-              <AlertTriangle size={12} style={{ display: 'inline', marginRight: '4px' }}/> 
-              Quick Select Recent Fraud
-            </label>
-            <select 
-              className="form-select" 
-              onChange={(e) => setTransactionId(e.target.value)}
-              value=""
-            >
-              <option value="" disabled>Select a flagged transaction...</option>
-              {recentFrauds.map(txn => (
-                <option key={txn.id} value={txn.id}>
-                  ${txn.amount} - {new Date(txn.timestamp).toLocaleTimeString()} ({txn.id.substring(0, 8)})
-                </option>
+          <div style={{ minWidth: 200 }}>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 6 }}>Quick Select</label>
+            <select onChange={e => setTxnId(e.target.value)} value=""
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 10,
+                border: '1px solid var(--color-border)', background: 'var(--color-bg-raised)',
+                color: 'var(--color-text)', fontSize: '0.88rem', cursor: 'pointer'
+              }}>
+              <option value="">Select fraud transaction</option>
+              {fraudTxns.map(t => (
+                <option key={t.id} value={t.id}>TXN #{t.id} — ${t.amount?.toFixed(2)}</option>
               ))}
             </select>
           </div>
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ height: '40px' }}>
-            {loading ? <><Loader2 size={16} className="spinner" /> Generating…</> : <><FileText size={16} /> Generate PDF</>}
+          <button type="submit" disabled={loading || !txnId} style={{
+            padding: '10px 24px', borderRadius: 10,
+            background: 'linear-gradient(135deg, #0077b6, #00b4d8)',
+            color: 'white', fontWeight: 700, border: 'none',
+            cursor: loading || !txnId ? 'not-allowed' : 'pointer',
+            fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 8,
+            opacity: loading || !txnId ? 0.5 : 1, whiteSpace: 'nowrap'
+          }}>
+            {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <FileText size={16} />}
+            {loading ? 'Generating...' : 'Generate PDF'}
           </button>
         </form>
 
         {error && (
           <div style={{
-            marginTop: '1rem', padding: '0.75rem 1rem',
-            background: 'var(--danger-bg)', border: '1px solid rgba(239,68,68,0.2)',
-            borderRadius: 'var(--radius-sm)', color: 'var(--danger)', fontSize: '0.85rem'
-          }}>
-            {error}
-          </div>
+            marginTop: 16, padding: '10px 14px', borderRadius: 10,
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+            color: '#ef4444', fontSize: '0.82rem'
+          }}>{error}</div>
         )}
 
-        {reportResult && (
-          <div style={{
-            marginTop: '1rem', padding: '1rem 1.25rem',
-            background: 'var(--success-bg)', border: '1px solid rgba(0,204,150,0.2)',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            animation: 'fadeInUp 0.4s ease-out'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <CheckCircle size={18} color="var(--success)" />
-              <div>
-                <div style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.88rem' }}>
-                  Report Generated Successfully
-                </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>
-                  Transaction: {reportResult.transaction_id?.substring(0, 16)}
-                </div>
-              </div>
+        {success && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            style={{
+              marginTop: 16, padding: '14px 18px', borderRadius: 10,
+              background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircle size={20} color="#10b981" />
+              <span style={{ color: '#10b981', fontSize: '0.88rem', fontWeight: 500 }}>
+                Report generated successfully
+              </span>
             </div>
-            <a
-              href={downloadReport(reportResult.transaction_id)}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-primary btn-sm"
-              style={{ textDecoration: 'none' }}
-            >
-              <Download size={14} /> Download PDF
+            <a href={downloadReport(txnId)} target="_blank" rel="noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(16,185,129,0.2)', padding: '6px 14px',
+                borderRadius: 8, color: '#10b981', fontWeight: 600,
+                fontSize: '0.82rem', textDecoration: 'none'
+              }}>
+              <Download size={14} /> Download
             </a>
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
-      {/* Generated Reports History */}
-      <div className="card">
-        <h3 style={{
-          color: 'var(--accent-primary)', fontSize: '1rem', fontWeight: 600,
-          marginBottom: '1.25rem'
-        }}>
-          Generated Reports
-        </h3>
-
-        {generatedReports.length === 0 ? (
-          <div className="empty-state">
-            <FileText size={48} />
-            <p style={{ marginTop: '1rem' }}>No reports generated yet. Enter a transaction ID above to create one.</p>
-          </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Report ID</th>
-                <th>Transaction ID</th>
-                <th>Generated At</th>
-                <th>Action</th>
+      {/* History table */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Report ID</th>
+              <th>Transaction ID</th>
+              <th>Generated At</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.map(r => (
+              <tr key={r.id}>
+                <td style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontSize: '0.82rem' }}>{r.id}</td>
+                <td style={{ fontFamily: 'monospace', color: 'var(--color-muted)' }}>#{r.transaction_id}</td>
+                <td style={{ color: 'var(--color-muted)', fontSize: '0.82rem' }}>
+                  {new Date(r.generated_at).toLocaleString()}
+                </td>
+                <td>
+                  <a href={downloadReport(r.transaction_id)} target="_blank" rel="noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '4px 12px', borderRadius: 6,
+                      background: 'rgba(0,180,216,0.1)', color: '#00b4d8',
+                      fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none'
+                    }}>
+                    <Download size={12} /> Download
+                  </a>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {generatedReports.map((rpt) => (
-                <tr key={rpt.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--accent-primary)' }}>
-                    {rpt.id?.substring(0, 12)}
-                  </td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>
-                    {rpt.transaction_id?.substring(0, 16)}
-                  </td>
-                  <td style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {new Date(rpt.generated_at).toLocaleString()}
-                  </td>
-                  <td>
-                    <a
-                      href={downloadReport(rpt.transaction_id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn-secondary btn-sm"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <Download size={12} /> Download
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            ))}
+            {reports.length === 0 && (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+                  <FileText size={40} style={{ opacity: 0.15, margin: '0 auto 12px', display: 'block' }} />
+                  <p>No reports generated yet. Select a transaction to get started.</p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </motion.div>
     </div>
   );
 }

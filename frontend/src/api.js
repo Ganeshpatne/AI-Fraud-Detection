@@ -66,6 +66,20 @@ export const loginUser = async (data) => {
   return result;
 };
 
+export const loginWithGoogle = async (credential) => {
+  const result = await request('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) });
+  setToken(result.access_token);
+  setAuthUser({ id: result.user_id, username: result.username, role: result.role });
+  return result;
+};
+
+export const loginWithGithub = async (code) => {
+  const result = await request('/auth/github', { method: 'POST', body: JSON.stringify({ code }) });
+  setToken(result.access_token);
+  setAuthUser({ id: result.user_id, username: result.username, role: result.role });
+  return result;
+};
+
 export const logoutUser = () => {
   clearToken();
   window.location.href = '/login';
@@ -108,6 +122,12 @@ export const explainFraud = (transactionId, question) =>
   request('/explain-fraud', {
     method: 'POST',
     body: JSON.stringify({ transaction_id: transactionId, question }),
+  });
+
+export const chatQuery = (message, sessionId = 'default') =>
+  request('/chatbot/query', {
+    method: 'POST',
+    body: JSON.stringify({ message, session_id: sessionId }),
   });
 
 export const generateReport = (transactionId) => request(`/generate-report/${transactionId}`);

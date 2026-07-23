@@ -54,6 +54,11 @@ NVIDIA_MODEL = os.getenv(
     "meta/llama-3.1-8b-instruct"
 )
 
+# ─── OAuth Settings ───────────────────────────────────────────
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+
 # ─── JWT Authentication ───────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "fraud-detection-secret-key-change-in-prod")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")

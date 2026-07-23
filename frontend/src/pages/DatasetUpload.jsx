@@ -1,317 +1,199 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Upload, FileText, Database, Brain, Trash2, Play,
-  CheckCircle, XCircle, Clock, AlertTriangle, ChevronDown
-} from 'lucide-react';
-import { uploadDataset, fetchDatasets, trainOnDataset, deleteDataset, streamOnDataset } from '../api.js';
+import { motion } from 'framer-motion';
+import { Upload, Database, Loader2, Trash2, Play } from 'lucide-react';
+import { uploadDataset, fetchDatasets, trainOnDataset, deleteDataset } from '../api.js';
 
-const DOMAINS = [
-  { value: '', label: 'Auto-detect' },
-  { value: 'banking', label: 'Banking / Credit Card' },
-  { value: 'insurance', label: 'Insurance Claims' },
-  { value: 'ecommerce', label: 'E-commerce' },
-  { value: 'document_fraud', label: 'Document Fraud' },
-  { value: 'custom', label: 'Custom Dataset' },
-];
+const domains = ['Auto-detect', 'Banking', 'Insurance', 'E-commerce', 'Document Fraud', 'Custom'];
 
-const STATUS_STYLES = {
-  uploaded: { color: '#a0aec0', icon: Clock, label: 'Uploaded' },
-  validated: { color: '#00b4d8', icon: CheckCircle, label: 'Validated' },
-  training: { color: '#fd7e14', icon: Brain, label: 'Training...' },
-  ready: { color: '#28a745', icon: CheckCircle, label: 'Ready' },
-  error: { color: '#dc3545', icon: XCircle, label: 'Error' },
+const statusBadge = (status) => {
+  const map = {
+    uploaded: 'badge-uploaded',
+    validated: 'badge-validated',
+    training: 'badge-training',
+    ready: 'badge-ready',
+    error: 'badge-error',
+  };
+  return map[status] || 'badge-uploaded';
 };
 
 export default function DatasetUpload() {
   const [datasets, setDatasets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [training, setTraining] = useState({});
-  const [streaming, setStreaming] = useState({});
-  const [uploadForm, setUploadForm] = useState({ name: '', domain: '' });
-  const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadResult, setUploadResult] = useState(null);
-  const [error, setError] = useState('');
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    loadDatasets();
-  }, []);
+  const [name, setName] = useState('');
+  const [domain, setDomain] = useState('Auto-detect');
+  const [file, setFile] = useState(null);
+  const fileRef = useRef(null);
 
   const loadDatasets = async () => {
     try {
       const data = await fetchDatasets();
-      setDatasets(data);
-    } catch (err) {
-      console.error('Failed to load datasets:', err);
-    } finally {
-      setLoading(false);
-    }
+      setDatasets(Array.isArray(data) ? data : []);
+    } catch (e) { console.error(e); }
   };
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
-    else if (e.type === 'dragleave') setDragActive(false);
+  useEffect(() => { loadDatasets(); }, []);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      await uploadDataset(file, name || file.name, domain);
+      setFile(null);
+      setName('');
+      loadDatasets();
+    } catch (e) { console.error(e); }
+    setUploading(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
-    }
+    setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith('.csv')) setFile(f);
   };
 
-  const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-    setUploading(true);
-    setError('');
-    setUploadResult(null);
-
+  const handleTrain = async (id) => {
     try {
-      const result = await uploadDataset(
-        selectedFile,
-        uploadForm.name || null,
-        uploadForm.domain || null,
-      );
-      setUploadResult(result);
-      setSelectedFile(null);
-      setUploadForm({ name: '', domain: '' });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      await loadDatasets();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploading(false);
-    }
+      await trainOnDataset(id);
+      loadDatasets();
+    } catch (e) { console.error(e); }
   };
 
-  const handleTrain = async (datasetId) => {
-    setTraining(prev => ({ ...prev, [datasetId]: true }));
+  const handleDelete = async (id) => {
     try {
-      await trainOnDataset(datasetId);
-      await loadDatasets();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setTraining(prev => ({ ...prev, [datasetId]: false }));
-    }
+      await deleteDataset(id);
+      loadDatasets();
+    } catch (e) { console.error(e); }
   };
 
-  const handleStream = async (datasetId) => {
-    setStreaming(prev => ({ ...prev, [datasetId]: true }));
-    try {
-      await streamOnDataset(datasetId);
-      // Give it a second to show streaming state if we wanted to
-      alert("Live streaming started! Quickly navigate to the Dashboard or Live Alerts to watch the transactions process in real-time.");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setStreaming(prev => ({ ...prev, [datasetId]: false }));
-    }
-  };
-
-  const handleDelete = async (datasetId) => {
-    if (!confirm('Delete this dataset?')) return;
-    try {
-      await deleteDataset(datasetId);
-      await loadDatasets();
-    } catch (err) {
-      setError(err.message);
-    }
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', borderRadius: 10,
+    border: '1px solid var(--color-border)', background: 'var(--color-bg-raised)',
+    color: 'var(--color-text)', fontSize: '0.88rem'
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1><Database size={26} style={{ marginRight: 10, verticalAlign: 'middle' }} />Dataset Management</h1>
-          <p className="page-subtitle">Upload, validate, and train models on fraud detection datasets</p>
+    <div>
+      <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="font-heading" style={{
+          fontSize: 'clamp(1.4rem,3vw,1.85rem)', color: 'var(--color-text)', marginBottom: 24
+        }}>Dataset Manager</motion.h1>
+
+      {/* Dropzone */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}>
+        <div
+          className={`dropzone ${dragOver ? 'active' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileRef.current?.click()}
+        >
+          <input ref={fileRef} type="file" accept=".csv" hidden
+            onChange={e => { if (e.target.files[0]) setFile(e.target.files[0]); }} />
+          <Upload size={48} color="#00b4d8" style={{ marginBottom: 16 }} />
+          <h3 className="font-heading" style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: 8 }}>
+            {file ? file.name : 'Drop your CSV here'}
+          </h3>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 16 }}>
+            {file ? `${(file.size / 1024).toFixed(1)} KB` : 'or click to browse files'}
+          </p>
+          {!file && (
+            <button type="button" style={{
+              background: 'transparent', border: '1px solid var(--color-border)',
+              color: 'var(--color-text)', borderRadius: 10, padding: '8px 20px',
+              cursor: 'pointer', fontSize: '0.85rem'
+            }}>Browse Files</button>
+          )}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Upload Section */}
-      <div className="card upload-section">
-        <h2><Upload size={20} /> Upload New Dataset</h2>
-
-        <div className="upload-form-row">
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Dataset Name (optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. credit_card_2024"
-              value={uploadForm.name}
-              onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })}
-              id="dataset-name-input"
-            />
+      {/* Form fields */}
+      {file && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, marginTop: 16, alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 6 }}>Dataset Name</label>
+            <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="My dataset" />
           </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Domain</label>
-            <select
-              value={uploadForm.domain}
-              onChange={(e) => setUploadForm({ ...uploadForm, domain: e.target.value })}
-              id="dataset-domain-select"
-            >
-              {DOMAINS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+          <div>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 6 }}>Domain</label>
+            <select style={{ ...inputStyle, cursor: 'pointer' }} value={domain} onChange={e => setDomain(e.target.value)}>
+              {domains.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-        </div>
+          <button onClick={handleUpload} disabled={uploading} style={{
+            padding: '10px 24px', borderRadius: 10,
+            background: 'linear-gradient(135deg, #0077b6, #00b4d8)',
+            color: 'white', fontWeight: 700, border: 'none',
+            cursor: uploading ? 'wait' : 'pointer', fontSize: '0.88rem',
+            display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap'
+          }}>
+            {uploading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={16} />}
+            {uploading ? 'Uploading...' : 'Upload'}
+          </button>
+        </motion.div>
+      )}
 
-        <div
-          className={`drop-zone ${dragActive ? 'drag-active' : ''} ${selectedFile ? 'has-file' : ''}`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          id="dataset-drop-zone"
-        >
-          <input
-            type="file"
-            accept=".csv"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            style={{ display: 'none' }}
-            id="dataset-file-input"
-          />
-          {selectedFile ? (
-            <div className="file-selected">
-              <FileText size={32} color="#00b4d8" />
-              <span className="file-name">{selectedFile.name}</span>
-              <span className="file-size">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-            </div>
-          ) : (
-            <div className="drop-zone-content">
-              <Upload size={40} color="#00b4d8" strokeWidth={1.5} />
-              <p>Drag & drop a CSV file here, or click to browse</p>
-              <span>Supports: Banking, Insurance, Ecommerce, Document Fraud datasets</span>
-            </div>
-          )}
-        </div>
-
-        <button
-          className="btn btn-primary upload-btn"
-          onClick={handleUpload}
-          disabled={!selectedFile || uploading}
-          id="dataset-upload-btn"
-        >
-          {uploading ? (
-            <><span className="spinner" /> Uploading & Validating...</>
-          ) : (
-            <><Upload size={16} /> Upload Dataset</>
-          )}
-        </button>
-
-        {error && (
-          <div className="alert alert-danger">
-            <AlertTriangle size={16} /> {error}
-          </div>
-        )}
-
-        {uploadResult && (
-          <div className="alert alert-success">
-            <CheckCircle size={16} />
-            <div>
-              <strong>{uploadResult.message}</strong>
-              <div className="upload-stats">
-                <span>Rows: {uploadResult.row_count?.toLocaleString()}</span>
-                <span>Columns: {uploadResult.column_count}</span>
-                <span>Fraud: {uploadResult.fraud_count?.toLocaleString() || 'N/A'}</span>
-                <span>Domain: {uploadResult.domain}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Datasets List */}
-      <div className="card">
-        <h2><Database size={20} /> Uploaded Datasets</h2>
-        {loading ? (
-          <p className="loading-text">Loading datasets...</p>
-        ) : datasets.length === 0 ? (
-          <p className="empty-text">No datasets uploaded yet. Upload your first dataset above.</p>
-        ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Domain</th>
-                  <th>Rows</th>
-                  <th>Fraud</th>
-                  <th>Status</th>
-                  <th>Uploaded</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datasets.map(ds => {
-                  const st = STATUS_STYLES[ds.status] || STATUS_STYLES.uploaded;
-                  const StatusIcon = st.icon;
-                  return (
-                    <tr key={ds.id}>
-                      <td>
-                        <div className="ds-name">
-                          <FileText size={14} color="#00b4d8" />
-                          <span>{ds.name}</span>
-                        </div>
-                      </td>
-                      <td><span className="badge badge-info">{ds.domain}</span></td>
-                      <td>{ds.row_count?.toLocaleString() || '—'}</td>
-                      <td>{ds.fraud_count?.toLocaleString() || '—'}</td>
-                      <td>
-                        <span className="status-badge" style={{ color: st.color, borderColor: st.color }}>
-                          <StatusIcon size={12} /> {st.label}
-                        </span>
-                      </td>
-                      <td>{new Date(ds.uploaded_at).toLocaleDateString()}</td>
-                      <td>
-                        <div className="action-btns">
-                          <button
-                            className="btn btn-sm btn-train"
-                            onClick={() => handleTrain(ds.id)}
-                            disabled={training[ds.id] || ds.status === 'training'}
-                            title="Train model"
-                          >
-                            {training[ds.id] ? <span className="spinner-sm" /> : <Brain size={14} />}
-                          </button>
-                          <button
-                            className="btn btn-sm"
-                            style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-bg)' }}
-                            onClick={() => handleStream(ds.id)}
-                            disabled={streaming[ds.id] || ds.status !== 'ready'}
-                            title="Stream dataset live to Dashboard"
-                          >
-                            {streaming[ds.id] ? <span className="spinner-sm" /> : <Play size={14} />}
-                          </button>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => handleDelete(ds.id)}
-                            title="Delete dataset"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* Datasets table */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--color-border)', marginTop: 28 }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Domain</th>
+              <th>Records</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {datasets.map(ds => (
+              <tr key={ds.id}>
+                <td style={{ color: 'var(--color-text)', fontWeight: 500 }}>{ds.name}</td>
+                <td style={{ color: 'var(--color-muted)' }}>{ds.domain || '—'}</td>
+                <td style={{ color: 'var(--color-muted)' }}>{ds.record_count?.toLocaleString() || '—'}</td>
+                <td>
+                  <span className={`badge ${statusBadge(ds.status)}`}>
+                    {(ds.status || 'uploaded').toUpperCase()}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => handleTrain(ds.id)} style={{
+                      padding: '4px 12px', borderRadius: 6,
+                      background: 'rgba(0,180,216,0.1)', color: '#00b4d8',
+                      border: 'none', cursor: 'pointer', fontSize: '0.78rem',
+                      fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4
+                    }}>
+                      <Play size={12} /> Train
+                    </button>
+                    <button onClick={() => handleDelete(ds.id)} style={{
+                      padding: '4px 10px', borderRadius: 6,
+                      background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                      border: 'none', cursor: 'pointer', fontSize: '0.78rem',
+                      display: 'flex', alignItems: 'center', gap: 4
+                    }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {datasets.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+                  <Database size={40} style={{ opacity: 0.15, margin: '0 auto 12px', display: 'block' }} />
+                  <p>No datasets uploaded yet</p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </motion.div>
     </div>
   );
 }
