@@ -1,0 +1,13 @@
+# Vercel Ignore File
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pkl
+backend/ml_models/
+backend/datasets/
+data/
+logs/
+.git/
+.vscode/
+node_modules/
