@@ -6,18 +6,27 @@ Schema-aware: uses dataset_schema.json for multi-domain datasets.
 """
 import logging
 import json
-import pandas as pd
-import numpy as np
-import joblib
 from datetime import datetime
 from pathlib import Path
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score, accuracy_score
-from sklearn.ensemble import IsolationForest, RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier
+
+try:
+    import pandas as pd
+    import numpy as np
+    import joblib
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import classification_report, roc_auc_score, accuracy_score
+    from sklearn.ensemble import IsolationForest, RandomForestClassifier
+    from sklearn.preprocessing import StandardScaler
+    from xgboost import XGBClassifier
+    HAS_ML_TRAINER = True
+except ImportError:
+    pd = None
+    np = None
+    joblib = None
+    HAS_ML_TRAINER = False
 
 from backend.config import MODELS_DIR, DATA_DIR
+
 
 logger = logging.getLogger("fraud_detection")
 training_logger = logging.getLogger("fraud_detection.training")
