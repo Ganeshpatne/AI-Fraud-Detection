@@ -34,6 +34,26 @@ async def get_db():
 
 
 async def init_db():
-    """Create all tables (used on startup)."""
+    """Create all tables (used on startup) and seed default admin user."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    try:
+        from backend.models.database_models import User
+        from backend.utils.auth import hash_password
+        from sqlalchemy import select
+        async with async_session() as session:
+            result = await session.execute(select(User).where(User.username == "admin"))
+            if not result.scalar_one_or_none():
+                admin_user = User(
+                    username="admin",
+                    email="admin@example.com",
+                    password_hash=hash_password("admin123"),
+                    role="admin",
+                    is_active=True,
+                )
+                session.add(admin_user)
+                await session.commit()
+    except Exception:
+        pass
+
