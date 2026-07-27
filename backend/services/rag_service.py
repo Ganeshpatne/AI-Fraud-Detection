@@ -4,8 +4,16 @@ Handles document embedding, storage, and similarity search for fraud patterns.
 """
 import logging
 from typing import List, Dict, Any, Optional
-from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings, ChatNVIDIA
-from langchain_postgres.vectorstores import PGVector
+try:
+    from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings, ChatNVIDIA
+    from langchain_postgres.vectorstores import PGVector
+    HAS_LANGCHAIN = True
+except ImportError:
+    NVIDIAEmbeddings = None
+    ChatNVIDIA = None
+    PGVector = None
+    HAS_LANGCHAIN = False
+
 from backend.config import NVIDIA_API_KEY, DATABASE_URL_SYNC, NVIDIA_MODEL
 
 logger = logging.getLogger("fraud_detection")

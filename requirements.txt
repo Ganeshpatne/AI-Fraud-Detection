@@ -1,20 +1,12 @@
-# ─── Backend Dependencies ──────────────────────────────────────
-# Core
+# ─── Optimized Backend Dependencies for Serverless Deployment ───
 fastapi==0.115.0
-uvicorn[standard]==0.30.0
+uvicorn==0.30.0
 python-dotenv==1.0.1
 pydantic==2.9.0
 
 # Database
-sqlalchemy[asyncio]==2.0.35
-asyncpg==0.30.0
-psycopg2-binary==2.9.9
-alembic==1.13.0
+sqlalchemy==2.0.35
 aiosqlite==0.20.0
-
-# Redis / Celery
-celery[redis]==5.4.0
-redis==5.1.0
 
 # ML / AI
 scikit-learn==1.5.2
@@ -23,27 +15,15 @@ pandas==2.2.0
 numpy==1.26.4
 joblib==1.4.2
 
-# LLM, LangChain & LangGraph (NVIDIA + Postgres RAG)
-langchain==0.2.14
-langchain-community==0.2.12
-langgraph==0.2.14
-langchain-nvidia-ai-endpoints==0.2.2
-langchain-postgres==0.0.12
-pgvector==0.2.5
-
-# NVIDIA AI (HTTP client)
+# NVIDIA AI & HTTP
 httpx==0.27.0
 
-# PDF Generation
+# PDF Generation & WebSockets
 reportlab==4.2.5
-
-# WebSocket
 websockets==13.0
 
-# Authentication
+# Authentication & Utilities
 PyJWT==2.9.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.2.0
-
-# Utilities
 python-multipart==0.0.12
