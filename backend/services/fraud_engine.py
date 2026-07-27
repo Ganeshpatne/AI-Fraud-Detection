@@ -7,12 +7,23 @@ Combines:
 """
 import json
 import logging
-import numpy as np
-import joblib
 from pathlib import Path
 from typing import Optional, Tuple
-from sklearn.ensemble import IsolationForest, RandomForestClassifier
-from xgboost import XGBClassifier
+
+try:
+    import numpy as np
+    import joblib
+    from sklearn.ensemble import IsolationForest, RandomForestClassifier
+    from xgboost import XGBClassifier
+    HAS_ML = True
+except ImportError:
+    np = None
+    joblib = None
+    IsolationForest = None
+    RandomForestClassifier = None
+    XGBClassifier = None
+    HAS_ML = False
+
 
 from backend.config import MODELS_DIR
 

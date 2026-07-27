@@ -8,7 +8,13 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    pd = None
+    HAS_PANDAS = False
+
 
 logger = logging.getLogger("fraud_detection")
 
